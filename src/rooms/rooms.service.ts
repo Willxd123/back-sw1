@@ -6,6 +6,7 @@ import { RoomUser } from 'src/room-user/entities/room-user.entity';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { User } from 'src/users/entities/user.entity';
+import { UserActiveInterface } from 'src/common/interfaces/user-active.interface';
 
 @Injectable()
 export class RoomsService {
@@ -19,22 +20,23 @@ export class RoomsService {
   ) {}
 
   // Renombrar el método a 'create' para que coincida con el controller
-  async create(createRoomDto: CreateRoomDto) {
-    const { userId, name } = createRoomDto;
+  async create(createRoomDto: CreateRoomDto, user: UserActiveInterface) {
+    const { name } = createRoomDto;
 
-    // Buscar el usuario que está creando la sala
-    const user = await this.userRepository.findOneBy({ id: userId });
-    if (!user) {
+    // Buscar el usuario autenticado usando su email o ID desde el token
+    const creator = await this.userRepository.findOneBy({ email: user.email });
+    if (!creator) {
       throw new Error('User not found');
     }
 
     // Crear el código único para la sala
     const code = this.generateUniqueCode();
+
     // Crear la sala
     const room = this.roomRepository.create({
       name,
       code,
-      creator: user,  // Relacionar la sala con el creador
+      creator,  // Relacionamos la sala con el usuario creador
     });
 
     // Guardar la sala en la base de datos
@@ -42,12 +44,20 @@ export class RoomsService {
 
     // Agregar al creador como participante en la sala
     const roomUser = this.roomUserRepository.create({
-      user,
+      user: creator,
       room: newRoom,
     });
     await this.roomUserRepository.save(roomUser);
 
     return newRoom;
+  }
+  
+  // Buscar sala por código
+  async findByCode(code: string) {
+    return this.roomRepository.findOne({
+      where: { code },
+      relations: ['participants'],
+    });
   }
 
   // Implementar findAll
