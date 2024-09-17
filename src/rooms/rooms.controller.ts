@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  NotFoundException,
 } from '@nestjs/common';
 import { RoomsService } from './rooms.service';
 import { CreateRoomDto } from './dto/create-room.dto';
@@ -40,9 +41,14 @@ export class RoomsController {
     return this.roomsService.findAll();
   }
 
-  @Get(':code')  // Cambiamos para que busque una sala por su código
-  findOne(@Param('code') code: string) {
-    return this.roomsService.findByCode(code);
+  // Endpoint para obtener los detalles de una sala por su código
+  @Get(':code')
+  async findRoomByCode(@Param('code') code: string) {
+    const room = await this.roomsService.findRoomByCode(code);
+    if (!room) {
+      throw new NotFoundException('Sala no encontrada');
+    }
+    return room;
   }
 
   @Patch(':id')
