@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Room } from './entities/room.entity';
@@ -52,13 +52,12 @@ export class RoomsService {
     return newRoom;
   }
   
-   // Método para buscar la sala por código
-   async findRoomByCode(code: string): Promise<Room> {
-    const room = await this.roomRepository.findOne({ where: { code } });
-    if (!room) {
-      throw new NotFoundException('Sala no encontrada');
-    }
-    return room;
+  // Buscar sala por código
+  async findByCode(code: string) {
+    return this.roomRepository.findOne({
+      where: { code },
+      relations: ['participants'],
+    });
   }
 
   // Implementar findAll
