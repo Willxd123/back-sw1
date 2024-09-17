@@ -23,38 +23,8 @@ export class RoomUserService {
     private readonly roomRepository: Repository<Room>,
   ) {}
 
-  // Método para agregar un usuario a una sala
-  /*   async addUserToRoom(userId: number, createRoomUserDto: CreateRoomUserDto) {
-    const { code } = createRoomUserDto;
-  
-    const room = await this.roomRepository.findOne({ where: { code } });
-    if (!room) {
-      throw new NotFoundException('Room not found');
-    }
-  
-    const numericUserId = Number(userId);  // Asegúrate de que es un número
-    if (isNaN(numericUserId)) {
-      throw new BadRequestException('Invalid user ID');
-    }
-  
-    const existingRoomUser = await this.roomUserRepository.findOne({
-      where: { user: { id: numericUserId }, room: { id: room.id } },
-    });
-  
-    if (existingRoomUser) {
-      throw new Error('User is already in the room');
-    }
-  
-    const roomUser = this.roomUserRepository.create({
-      user: { id: numericUserId },
-      room,
-    });
-  
-    return this.roomUserRepository.save(roomUser);
-  }
-   */
   // Método para que un usuario se una a una sala usando el código
-  async joinRoomByCode(code: string, user: UserActiveInterface) {
+  async joinRoomByCode(code: string, userId: number) {
     // Verificar si la sala existe usando el código
     const room = await this.roomRepository.findOne({
       where: { code },
@@ -66,23 +36,24 @@ export class RoomUserService {
 
     // Verificar si el usuario ya está en la sala
     const existingRoomUser = await this.roomUserRepository.findOne({
-      where: { room: { id: room.id }, user: { id: user.id } },
+      where: { room: { id: room.id }, user: { id: userId } },
     });
 
     if (existingRoomUser) {
-      throw new BadRequestException('Ya estás en la sala');
+      // Si el usuario ya está en la sala, solo devolvemos la sala
+      return { message: 'Ya estás en la sala', room };
     }
 
-    // Buscar el usuario autenticado por su `id`
+    // Buscar el usuario por su `id`
     const foundUser = await this.userRepository.findOne({
-      where: { id: user.id },
+      where: { id: userId },
     });
 
     if (!foundUser) {
       throw new NotFoundException('Usuario no encontrado');
     }
 
-    // Agregar al usuario a la sala
+    // Agregar al usuario a la sala si es la primera vez que entra
     const roomUser = this.roomUserRepository.create({
       room,
       user: foundUser,
@@ -93,6 +64,58 @@ export class RoomUserService {
     return { message: 'Usuario agregado a la sala exitosamente', room };
   }
 
+  // Método para obtener todas las salas según el ID del usuario autenticado
+  async findRoomsByUserId(userId: number) {
+    // Obtener las salas creadas por el usuario
+    const createdRooms = await this.roomRepository.find({
+      where: { creator: { id: userId } }, // Filtra por las salas creadas por el usuario
+      relations: ['participants'], // Cargar los participantes
+    });
+
+    // Obtener las salas a las que el usuario se ha unido
+    const joinedRooms = await this.roomUserRepository.find({
+      where: { user: { id: userId } }, // Filtra las relaciones RoomUser según el ID del usuario
+      relations: ['room', 'room.participants'], // Cargar las salas y sus participantes
+    });
+
+    // Combinar las salas creadas y a las que el usuario se ha unido
+    const combinedRooms = [
+      ...createdRooms.map((room) => ({
+        name: room.name,
+        code: room.code,
+        participants: room.participants.map((p) => p.user),
+        created: true, // Indicador de que el usuario creó esta sala
+      })),
+      ...joinedRooms.map((roomUser) => ({
+        name: roomUser.room.name,
+        code: roomUser.room.code,
+        participants: roomUser.room.participants.map((p) => p.user),
+        created: false, // Indicador de que el usuario se unió a esta sala
+      })),
+    ];
+
+    return combinedRooms;
+  }
+
+  // Método para obtener todos los RoomUser
+  async findAll(): Promise<RoomUser[]> {
+    return this.roomUserRepository.find({
+      relations: ['user', 'room'], // Cargar relaciones con User y Room si es necesario
+    });
+  }
+  // Método para obtener un RoomUser por su ID
+  async findOne(id: number): Promise<RoomUser> {
+    const roomUser = await this.roomUserRepository.findOne({
+      where: { id },
+      relations: ['user', 'room'], // Cargar relaciones con User y Room si es necesario
+    });
+
+    if (!roomUser) {
+      throw new NotFoundException(`RoomUser with ID ${id} not found`);
+    }
+
+    return roomUser;
+  }
   // Método para listar todos los usuarios en una sala
   async findUsersInRoom(roomId: number) {
     return this.roomUserRepository.find({
