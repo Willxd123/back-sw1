@@ -88,10 +88,7 @@ export class RoomsService {
     }
     return this.roomRepository.remove(room);
   }
-  //generador de las sala unica
-  private generateUniqueCode(): string {
-    return Math.random().toString(36).substr(2, 4).toUpperCase(); // Código único de sala
-  }
+  //
   // Obtener todos los usuarios de una sala (incluidos conectados y desconectados)
 
   async getAllUsersInRoom(roomCode: string) {
@@ -113,6 +110,30 @@ export class RoomsService {
   
     return allUsers;
   }
-
+  //generador de las sala unica
+  private generateUniqueCode(): string {
+    return Math.random().toString(36).substr(2, 4).toUpperCase(); // Código único de sala
+  }
+  //------------------------
+  async findRoomUser(userId: number, roomId: number) {
+    return await this.roomUserRepository.findOne({ where: { user: { id: userId }, room: { id: roomId } } });
+  }
+  
+  async addUserToRoom(userId: number, roomId: number) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const room = await this.roomRepository.findOne({ where: { id: roomId } });
+  
+    if (!user || !room) {
+      throw new Error('Usuario o sala no encontrados');
+    }
+  
+    const roomUser = this.roomUserRepository.create({
+      user,
+      room,
+    });
+  
+    await this.roomUserRepository.save(roomUser);
+  }
+  
 
 }

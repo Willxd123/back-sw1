@@ -89,30 +89,21 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const user = client.data.user;
       const room = await this.roomsService.findByCode(roomCode);
       if (!room) throw new Error('Sala no encontrada');
-      // Unirse a la sala
+      // Verificar si el usuario ya está en la sala
+      const existingRoomUser = await this.roomsService.findRoomUser(
+        user.id,
+        room.id,
+      );
+      if (!existingRoomUser) {
+        // Si no está en la sala, agregarlo como 'participant'
+        await this.roomsService.addUserToRoom(user.id, room.id);
+      }
+
+      // Unirse a la sala en el socket
       client.join(roomCode);
       this.server.to(roomCode).emit('newUserJoined', { email: user.email });
 
-      // Obtener todos los usuarios de la sala
-      /* const allUsers = await this.roomsService.getAllUsersInRoom(roomCode);
-      // Actualizar el estado de conexión de los usuarios actualmente conectados
-      const clients = Array.from(
-        this.server.sockets.adapter.rooms.get(roomCode) || [],
-      );
-      const usersInRoom = allUsers.map((userEntry) => {
-        if (
-          clients.some(
-            (clientId) =>
-              this.server.sockets.sockets.get(clientId).data.user.email ===
-              userEntry.email,
-          )
-        ) {
-          userEntry.isConnected = true; // Si el usuario está en la lista de sockets, está conectado
-        }
-        return userEntry;
-      }); */
       // Obtener la lista de usuarios conectados y emitir a todos
-      /* const usersInRoom = await this.getUsersInRoom(roomCode); */
       const usersInRoom = await this.getUsersInRoomWithConnectionStatus(roomCode);
       this.server.to(roomCode).emit('updateUsersList', usersInRoom);
 
@@ -125,7 +116,6 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   // Obtener usuarios conectados
-
   private async getUsersInRoom(roomCode: string) {
     const room = await this.roomsService.findByCode(roomCode);
     const clients = Array.from(
@@ -192,19 +182,4 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log(`Usuario ${user.email} salió de la sala: ${roomCode}`);
   }
 
-  /* @SubscribeMessage('leaveRoom')
-  handleLeaveRoom(
-    @ConnectedSocket() client: Socket,
-    @MessageBody('roomCode') roomCode: string,
-  ) {
-    const user = client.data.user;
-    if (!user) throw new Error('Usuario no autenticado');
-
-    client.leave(roomCode);
-    client.emit('leftRoom', { roomCode });
-    this.server.to(roomCode).emit('userLeft', { email: user.email });
-    console.log(`Usuario ${user.email} salió de la sala: ${roomCode}`);
-  } */
-
-  //prueba
 }
