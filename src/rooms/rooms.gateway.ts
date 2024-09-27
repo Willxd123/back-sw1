@@ -6,44 +6,205 @@ import {
   OnGatewayInit,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { RoomsService } from './rooms.service';
+import { CreateRoomDto } from './dto/create-room.dto';
+import { UserActiveInterface } from 'src/common/interfaces/user-active.interface';
+import { JwtService } from '@nestjs/jwt';
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: '*', // Permitir el acceso desde cualquier origen, ajustar según sea necesario
   },
 })
-export class RoomsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
-  @WebSocketServer() server: Server;
+export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  @WebSocketServer()
+  server: Server;
 
-  // Método que se ejecuta al inicializar el Gateway
-  afterInit(server: Server) {
-    console.log('WebSocket Gateway initialized');
+  constructor(
+    private readonly roomsService: RoomsService,
+    private readonly jwtService: JwtService,
+  ) {}
+
+  // Verificar conexión de un cliente
+  async handleConnection(client: Socket) {
+    const token = client.handshake.auth.token;
+    const user = this.jwtService.verify(token);
+    client.data.user = user;
+    console.log(`Usuario conectado: ${user.email}`);
   }
 
-  // Método que se ejecuta cuando un cliente se conecta
-  handleConnection(client: Socket) {
-    console.log(`Client connected: ${client.id}`);
-  }
-
-  // Método que se ejecuta cuando un cliente se desconecta
+  // Método para manejar la desconexión de un cliente
   handleDisconnect(client: Socket) {
-    console.log(`Client disconnected: ${client.id}`);
+    const user = client.data.user;
+    console.log(
+      `Cliente desconectado: ${client.id}, Usuario: ${user?.email || 'desconocido'}`,
+    );
+
+    // Emite el evento de desconexión
+    if (user) {
+      this.server.emit('userDisconnected', { email: user.email });
+    }
   }
 
-  // Método para unirse a una sala
+  // Método para obtener el usuario desde el token JWT
+  private getUserFromToken(client: Socket): UserActiveInterface {
+    const token = client.handshake.headers.authorization?.split(' ')[1];
+    if (!token) {
+      throw new Error('Token no provisto');
+    }
+    const decodedUser = this.jwtService.verify(token);
+    return decodedUser;
+  }
+
+  // Crear una nueva sala con Socket.IO
+  @SubscribeMessage('createRoom')
+  async handleCreateRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() createRoomDto: CreateRoomDto,
+  ) {
+    try {
+      const user = client.data.user;
+      if (!user) throw new Error('Usuario no autenticado');
+
+      const room = await this.roomsService.create(createRoomDto, user);
+      client.join(room.code); // Unirse a la sala
+      client.emit('roomCreated', room); // Enviar confirmación al cliente
+
+      console.log(`Sala creada: ${room.name}, código: ${room.code}`);
+    } catch (error) {
+      client.emit('error', { message: error.message });
+    }
+  }
+
+  // Unirse a una sala existente
   @SubscribeMessage('joinRoom')
-  handleJoinRoom(client: Socket, room: string) {
-    client.join(room);
-    client.emit('joinedRoom', room);
-    console.log(`Client ${client.id} joined room ${room}`);
+  async handleJoinRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('roomCode') roomCode: string,
+  ) {
+    try {
+      const user = client.data.user;
+      const room = await this.roomsService.findByCode(roomCode);
+      if (!room) throw new Error('Sala no encontrada');
+      // Unirse a la sala
+      client.join(roomCode);
+      this.server.to(roomCode).emit('newUserJoined', { email: user.email });
+
+      // Obtener todos los usuarios de la sala
+      /* const allUsers = await this.roomsService.getAllUsersInRoom(roomCode);
+      // Actualizar el estado de conexión de los usuarios actualmente conectados
+      const clients = Array.from(
+        this.server.sockets.adapter.rooms.get(roomCode) || [],
+      );
+      const usersInRoom = allUsers.map((userEntry) => {
+        if (
+          clients.some(
+            (clientId) =>
+              this.server.sockets.sockets.get(clientId).data.user.email ===
+              userEntry.email,
+          )
+        ) {
+          userEntry.isConnected = true; // Si el usuario está en la lista de sockets, está conectado
+        }
+        return userEntry;
+      }); */
+      // Obtener la lista de usuarios conectados y emitir a todos
+      /* const usersInRoom = await this.getUsersInRoom(roomCode); */
+      const usersInRoom = await this.getUsersInRoomWithConnectionStatus(roomCode);
+      this.server.to(roomCode).emit('updateUsersList', usersInRoom);
+
+      client.emit('joinedRoom', room);
+
+      console.log(`Usuario ${user.email} se unió a la sala: ${roomCode}`);
+    } catch (error) {
+      client.emit('error', { message: error.message });
+    }
   }
 
-  // Método para enviar un mensaje a todos los usuarios en una sala
-  @SubscribeMessage('sendDiagramUpdate')
-  handleDiagramUpdate(@MessageBody() data: any) {
-    const { room, diagramData } = data;
-    this.server.to(room).emit('receiveDiagramUpdate', diagramData);
+  // Obtener usuarios conectados
+
+  private async getUsersInRoom(roomCode: string) {
+    const room = await this.roomsService.findByCode(roomCode);
+    const clients = Array.from(
+      this.server.sockets.adapter.rooms.get(roomCode) || [],
+    );
+    return clients.map((clientId) => {
+      const clientSocket = this.server.sockets.sockets.get(clientId);
+      return { email: clientSocket.data.user.email, isConnected: true };
+    });
   }
+  private async getUsersInRoomWithConnectionStatus(roomCode: string) {
+    // Obtener todos los usuarios de la base de datos
+    const allUsers = await this.roomsService.getAllUsersInRoom(roomCode);
+    
+    // Obtener los usuarios actualmente conectados al socket
+    const connectedClients = Array.from(
+      this.server.sockets.adapter.rooms.get(roomCode) || [],
+    );
+  
+    // Actualizar el estado de conexión para cada usuario
+    return allUsers.map((user) => ({
+      email: user.email,
+      isConnected: connectedClients.some(
+        (clientId) => this.server.sockets.sockets.get(clientId)?.data.user.email === user.email
+      ),
+    }));
+  }
+  /*  @SubscribeMessage('joinRoom')
+  async handleJoinRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('roomCode') roomCode: string,
+  ) {
+    try {
+      const user = client.data.user;
+      const room = await this.roomsService.findByCode(roomCode);
+      if (!room) throw new Error('Sala no encontrada');
+
+      client.join(roomCode);
+      this.server.to(roomCode).emit('newUserJoined', { email: user.email });
+      client.emit('joinedRoom', room);
+
+      console.log(`Usuario ${user.email} se unió a la sala: ${roomCode}`);
+    } catch (error) {
+      client.emit('error', { message: error.message });
+    }
+  } */
+  //salir de una sala
+  @SubscribeMessage('leaveRoom')
+  handleLeaveRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('roomCode') roomCode: string,
+  ) {
+    const user = client.data.user;
+    // El usuario deja la sala
+    client.leave(roomCode);
+
+    client.emit('leftRoom', { roomCode });
+    // Emitir el estado desconectado y actualizar la lista
+    this.server.to(roomCode).emit('userLeft', { email: user.email });
+    this.getUsersInRoomWithConnectionStatus(roomCode).then((usersInRoom) => {
+      this.server.to(roomCode).emit('updateUsersList', usersInRoom);
+    });
+
+    console.log(`Usuario ${user.email} salió de la sala: ${roomCode}`);
+  }
+
+  /* @SubscribeMessage('leaveRoom')
+  handleLeaveRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('roomCode') roomCode: string,
+  ) {
+    const user = client.data.user;
+    if (!user) throw new Error('Usuario no autenticado');
+
+    client.leave(roomCode);
+    client.emit('leftRoom', { roomCode });
+    this.server.to(roomCode).emit('userLeft', { email: user.email });
+    console.log(`Usuario ${user.email} salió de la sala: ${roomCode}`);
+  } */
+
+  //prueba
 }

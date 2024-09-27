@@ -92,4 +92,27 @@ export class RoomsService {
   private generateUniqueCode(): string {
     return Math.random().toString(36).substr(2, 4).toUpperCase(); // Código único de sala
   }
+  // Obtener todos los usuarios de una sala (incluidos conectados y desconectados)
+
+  async getAllUsersInRoom(roomCode: string) {
+    // Obtén la sala por su código, incluyendo la relación con los usuarios
+    const room = await this.roomRepository.findOne({
+      where: { code: roomCode },
+      relations: ['participants', 'participants.user'],  // Asegúrate de incluir los usuarios
+    });
+  
+    if (!room) {
+      throw new Error('Sala no encontrada');
+    }
+  
+    // Mapear la lista de usuarios para devolver su email y estado de conexión
+    const allUsers = room.participants.map(participant => ({
+      email: participant.user.email,
+      isConnected: false,  // Inicialmente, asumimos que están desconectados
+    }));
+  
+    return allUsers;
+  }
+
+
 }
