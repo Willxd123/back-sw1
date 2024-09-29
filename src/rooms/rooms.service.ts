@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Room } from './entities/room.entity';
@@ -52,13 +52,12 @@ export class RoomsService {
     return newRoom;
   }
   
-   // Método para buscar la sala por código
-   async findRoomByCode(code: string): Promise<Room> {
-    const room = await this.roomRepository.findOne({ where: { code } });
-    if (!room) {
-      throw new NotFoundException('Sala no encontrada');
-    }
-    return room;
+  // Buscar sala por código
+  async findByCode(code: string) {
+    return this.roomRepository.findOne({
+      where: { code },
+      relations: ['participants'],
+    });
   }
 
   // Implementar findAll
@@ -89,8 +88,52 @@ export class RoomsService {
     }
     return this.roomRepository.remove(room);
   }
+  //
+  // Obtener todos los usuarios de una sala (incluidos conectados y desconectados)
+
+  async getAllUsersInRoom(roomCode: string) {
+    // Obtén la sala por su código, incluyendo la relación con los usuarios
+    const room = await this.roomRepository.findOne({
+      where: { code: roomCode },
+      relations: ['participants', 'participants.user'],  // Asegúrate de incluir los usuarios
+    });
+  
+    if (!room) {
+      throw new Error('Sala no encontrada');
+    }
+  
+    // Mapear la lista de usuarios para devolver su email y estado de conexión
+    const allUsers = room.participants.map(participant => ({
+      email: participant.user.email,
+      isConnected: false,  // Inicialmente, asumimos que están desconectados
+    }));
+  
+    return allUsers;
+  }
   //generador de las sala unica
   private generateUniqueCode(): string {
     return Math.random().toString(36).substr(2, 4).toUpperCase(); // Código único de sala
   }
+  //------------------------
+  async findRoomUser(userId: number, roomId: number) {
+    return await this.roomUserRepository.findOne({ where: { user: { id: userId }, room: { id: roomId } } });
+  }
+  
+  async addUserToRoom(userId: number, roomId: number) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const room = await this.roomRepository.findOne({ where: { id: roomId } });
+  
+    if (!user || !room) {
+      throw new Error('Usuario o sala no encontrados');
+    }
+  
+    const roomUser = this.roomUserRepository.create({
+      user,
+      room,
+    });
+  
+    await this.roomUserRepository.save(roomUser);
+  }
+  
+
 }

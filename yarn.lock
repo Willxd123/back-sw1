@@ -763,13 +763,13 @@
     multer "1.4.4-lts.1"
     tslib "2.6.3"
 
-"@nestjs/platform-socket.io@^10.0.0", "@nestjs/platform-socket.io@^10.4.1":
-  version "10.4.1"
-  resolved "https://registry.npmjs.org/@nestjs/platform-socket.io/-/platform-socket.io-10.4.1.tgz"
-  integrity sha512-cxn5vKBAbqtEVPl0qVcJpR4sC12+hzcY/mYXGW6ippOKQDBNc2OF8oZXu6V3O1MvAl+VM7eNNEsLmP9DRKQlnw==
+"@nestjs/platform-socket.io@^10.0.0", "@nestjs/platform-socket.io@^10.4.3":
+  version "10.4.3"
+  resolved "https://registry.npmjs.org/@nestjs/platform-socket.io/-/platform-socket.io-10.4.3.tgz"
+  integrity sha512-jTatT8q15LB5CFWsaIez3IigMixt7tNGJ4QLlRJ5NggPOPKRZssJnloODyEadFNHJjZiyufp5/NoPKBtNMf+lg==
   dependencies:
     socket.io "4.7.5"
-    tslib "2.6.3"
+    tslib "2.7.0"
 
 "@nestjs/schematics@^10.0.0", "@nestjs/schematics@^10.0.1":
   version "10.1.4"
@@ -808,14 +808,14 @@
   dependencies:
     uuid "9.0.1"
 
-"@nestjs/websockets@^10.0.0", "@nestjs/websockets@^10.4.1":
-  version "10.4.1"
-  resolved "https://registry.npmjs.org/@nestjs/websockets/-/websockets-10.4.1.tgz"
-  integrity sha512-p0Eq94WneczV2bnLEu9hl24iCIfH5eUCGgBuYOkVDySBwvya5L+gD4wUoqIqGoX1c6rkhQa+pMR7pi1EY4t93w==
+"@nestjs/websockets@^10.0.0", "@nestjs/websockets@^10.4.3":
+  version "10.4.3"
+  resolved "https://registry.npmjs.org/@nestjs/websockets/-/websockets-10.4.3.tgz"
+  integrity sha512-EW5/GR0jImJwrb8+YpHPoFN2tlhYQzVE2yAN5Se5sygUr/ZFMNAG84sd79NmWGd4RxoxR0aFH9nRycQ/0Ebe5w==
   dependencies:
     iterare "1.2.1"
     object-hash "3.0.0"
-    tslib "2.6.3"
+    tslib "2.7.0"
 
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
@@ -2198,10 +2198,10 @@ diff@^4.0.1:
     "@nestjs/mapped-types" "*"
     "@nestjs/passport" "^10.0.3"
     "@nestjs/platform-express" "^10.0.0"
-    "@nestjs/platform-socket.io" "^10.4.1"
+    "@nestjs/platform-socket.io" "^10.4.3"
     "@nestjs/swagger" "7.4.0"
     "@nestjs/typeorm" "^10.0.2"
-    "@nestjs/websockets" "^10.4.1"
+    "@nestjs/websockets" "^10.4.3"
     axios "^1.7.7"
     bcryptjs "2.4.3"
     class-transformer "0.5.1"
@@ -2214,6 +2214,7 @@ diff@^4.0.1:
     pg "^8.12.0"
     reflect-metadata "^0.2.0"
     rxjs "^7.8.1"
+    socket.io "^4.7.5"
     typeorm "^0.3.20"
 
 doctrine@^3.0.0:
@@ -4855,7 +4856,7 @@ socket.io-parser@~4.2.4:
     "@socket.io/component-emitter" "~3.1.0"
     debug "~4.3.1"
 
-socket.io@4.7.5:
+socket.io@^4.7.5, socket.io@4.7.5:
   version "4.7.5"
   resolved "https://registry.npmjs.org/socket.io/-/socket.io-4.7.5.tgz"
   integrity sha512-DmeAkF6cwM9jSfmp6Dr/5/mfMwb5Z5qRrSXLpo3Fq5SqyU8CMF15jIN4ZhfSwu35ksM1qmHZDQ/DK5XTccSTvA==
@@ -5268,6 +5269,11 @@ tslib@2.6.3:
   version "2.6.3"
   resolved "https://registry.npmjs.org/tslib/-/tslib-2.6.3.tgz"
   integrity sha512-xNvxJEOUiWPGhUuUdQgAJPKOOJfGnIyKySOc09XkKsgdUV/3E2zvwZYdejjmRgPCgcym1juLH3226yA7sEFJKQ==
+
+tslib@2.7.0:
+  version "2.7.0"
+  resolved "https://registry.npmjs.org/tslib/-/tslib-2.7.0.tgz"
+  integrity sha512-gLXCKdN1/j47AiHiOkJN69hJmcbGTHI0ImLmbYLHykhgeN0jVGola9yVjFgzCUklsZQMW55o+dW7IXv3RCXDzA==
 
 type-check@^0.4.0, type-check@~0.4.0:
   version "0.4.0"
