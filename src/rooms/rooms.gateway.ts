@@ -143,25 +143,6 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       ),
     }));
   }
-  /*  @SubscribeMessage('joinRoom')
-  async handleJoinRoom(
-    @ConnectedSocket() client: Socket,
-    @MessageBody('roomCode') roomCode: string,
-  ) {
-    try {
-      const user = client.data.user;
-      const room = await this.roomsService.findByCode(roomCode);
-      if (!room) throw new Error('Sala no encontrada');
-
-      client.join(roomCode);
-      this.server.to(roomCode).emit('newUserJoined', { email: user.email });
-      client.emit('joinedRoom', room);
-
-      console.log(`Usuario ${user.email} se unió a la sala: ${roomCode}`);
-    } catch (error) {
-      client.emit('error', { message: error.message });
-    }
-  } */
   //salir de una sala
   @SubscribeMessage('leaveRoom')
   handleLeaveRoom(
