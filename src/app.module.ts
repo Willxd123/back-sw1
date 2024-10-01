@@ -7,12 +7,8 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { RoomsModule } from './rooms/rooms.module';
 import { RoomUserModule } from './room-user/room-user.module';
-import { AttibutesModule } from './client/attibutes/attibutes.module';
-import { OperationsModule } from './client/operations/operations.module';
-import { RelationsModule } from './client/relations/relations.module';
-import { PositionsModule } from './client/positions/positions.module';
-import { RelationTableModule } from './client/relation-table/relation-table.module';
-import { TableModule } from './client/table/table.module';
+
+
 
 @Module({
   imports: [
@@ -33,12 +29,6 @@ import { TableModule } from './client/table/table.module';
     AuthModule,
     RoomsModule,
     RoomUserModule,
-    AttibutesModule,
-    OperationsModule,
-    RelationsModule,
-    PositionsModule,
-    RelationTableModule,
-    TableModule,
   ],
   controllers: [AppController],
   providers: [AppService],

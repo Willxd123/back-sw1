@@ -105,6 +105,7 @@ export class RoomsService {
     // Mapear la lista de usuarios para devolver su email y estado de conexión
     const allUsers = room.participants.map(participant => ({
       email: participant.user.email,
+      name: participant.user.name,
       isConnected: false,  // Inicialmente, asumimos que están desconectados
     }));
   
@@ -135,5 +136,8 @@ export class RoomsService {
     await this.roomUserRepository.save(roomUser);
   }
   
-
+  async findRoomByCode(roomCode: string): Promise<Room> {
+    return await this.roomRepository.findOne({ where: { code: roomCode } });
+  }
+  
 }

@@ -8,7 +8,6 @@ import {
 } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { RoomUser } from 'src/room-user/entities/room-user.entity'; // Tabla intermedia
-import { Table } from 'src/client/table/entities/table.entity';
 
 @Entity()
 export class Room {
@@ -27,8 +26,6 @@ export class Room {
   @OneToMany(() => RoomUser, (roomUser) => roomUser.room)
   participants: RoomUser[]; // Participantes de la sala
   // Relación con TablaEntidad
-  @OneToMany(() => Table, (table) => table.room)
-  table: Table[]; // Las tablas asociadas a la sala
 
   @Column({ default: false })
   isActive: boolean; // Para saber si la sala está activa o finalizada
