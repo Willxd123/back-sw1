@@ -49,16 +49,6 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  // Método para obtener el usuario desde el token JWT
-  private getUserFromToken(client: Socket): UserActiveInterface {
-    const token = client.handshake.headers.authorization?.split(' ')[1];
-    if (!token) {
-      throw new Error('Token no provisto');
-    }
-    const decodedUser = this.jwtService.verify(token);
-    return decodedUser;
-  }
-
   // Crear una nueva sala con Socket.IO
   @SubscribeMessage('createRoom')
   async handleCreateRoom(
@@ -104,7 +94,8 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.server.to(roomCode).emit('newUserJoined', { email: user.email });
 
       // Obtener la lista de usuarios conectados y emitir a todos
-      const usersInRoom = await this.getUsersInRoomWithConnectionStatus(roomCode);
+      const usersInRoom =
+        await this.getUsersInRoomWithConnectionStatus(roomCode);
       this.server.to(roomCode).emit('updateUsersList', usersInRoom);
 
       client.emit('joinedRoom', room);
@@ -116,30 +107,23 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   // Obtener usuarios conectados
-  private async getUsersInRoom(roomCode: string) {
-    const room = await this.roomsService.findByCode(roomCode);
-    const clients = Array.from(
-      this.server.sockets.adapter.rooms.get(roomCode) || [],
-    );
-    return clients.map((clientId) => {
-      const clientSocket = this.server.sockets.sockets.get(clientId);
-      return { email: clientSocket.data.user.email, isConnected: true };
-    });
-  }
   private async getUsersInRoomWithConnectionStatus(roomCode: string) {
     // Obtener todos los usuarios de la base de datos
     const allUsers = await this.roomsService.getAllUsersInRoom(roomCode);
-    
+
     // Obtener los usuarios actualmente conectados al socket
     const connectedClients = Array.from(
       this.server.sockets.adapter.rooms.get(roomCode) || [],
     );
-  
+
     // Actualizar el estado de conexión para cada usuario
     return allUsers.map((user) => ({
       email: user.email,
+      name: user.name,
       isConnected: connectedClients.some(
-        (clientId) => this.server.sockets.sockets.get(clientId)?.data.user.email === user.email
+        (clientId) =>
+          this.server.sockets.sockets.get(clientId)?.data.user.email ===
+          user.email,
       ),
     }));
   }
@@ -162,5 +146,198 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     console.log(`Usuario ${user.email} salió de la sala: ${roomCode}`);
   }
+  //-------------------diagrama
+  @SubscribeMessage('addClass')
+  async handleAddClass(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() newClassData: any,
+  ) {
+    const user = client.data.user;
+    if (!user) throw new Error('Usuario no autenticado');
 
+    const roomCode = newClassData.roomCode;
+    const classData = newClassData.classData;
+
+    // Verificar que los datos están siendo recibidos
+    console.log(`Clase recibida en el servidor: ${JSON.stringify(classData)}`);
+
+    // Emitir a todos los usuarios conectados en esa sala
+    this.server.to(roomCode).emit('classAdded', classData);
+    console.log(
+      `Usuario ${user.email} agregó una clase en la sala: ${roomCode}`,
+    );
+  }
+  //------------posicion
+  @SubscribeMessage('updateClassPositionAndSize')
+  async handleClassPositionAndSizeUpdate(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() updateData: any,
+  ) {
+    const roomCode = updateData.roomCode;
+    const classData = updateData.classData;
+
+    // Obtener el nombre del usuario que actualizó la clase
+    const user = client.data.user;
+
+    console.log(
+      `Actualización de posición recibida para la clase con key ${classData.key} del usuario ${user.email}.`,
+    );
+
+    // Emitir la actualización de posición a todos los usuarios conectados en la sala
+    this.server.to(roomCode).emit('classPositionAndSizeUpdated', {
+      classData,
+      user: user.email, // Incluir el email del usuario que realizó la actualización
+    });
+  }
+  //---------------atributo
+  @SubscribeMessage('addAttribute')
+  async handleAddAttribute(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() attributeData: any,
+  ) {
+    const user = client.data.user;
+    if (!user) throw new Error('Usuario no autenticado');
+
+    const roomCode = attributeData.roomCode;
+    const classKey = attributeData.classKey;
+    const attributeName = attributeData.attributeName;
+    const attributeReturnType = attributeData.attributeReturnType;
+
+    console.log(
+      `Atributo recibido para la clase con key ${classKey} del usuario ${user.email}.`,
+    );
+
+    // Emitir la adición del atributo a todos los usuarios conectados en la sala
+    this.server.to(roomCode).emit('attributeAdded', {
+      classKey,
+      attributeName,
+      attributeReturnType,
+      user: user.email, // Incluir el email del usuario que realizó la actualización
+    });
+  }
+  @SubscribeMessage('removeAttribute')
+  async handleRemoveAttribute(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() attributeData: any,
+  ) {
+    const user = client.data.user;
+    if (!user) throw new Error('Usuario no autenticado');
+
+    const roomCode = attributeData.roomCode;
+    const classKey = attributeData.classKey;
+    const attributeName = attributeData.attributeName;
+
+    console.log(
+      `Atributo a eliminar de la clase con key ${classKey} recibido del usuario ${user.email}.`,
+    );
+
+    // Emitir la eliminación del atributo a todos los usuarios conectados en la sala
+    this.server.to(roomCode).emit('attributeRemoved', {
+      classKey,
+      attributeName,
+      user: user.email, // Incluir el email del usuario que realizó la eliminación
+    });
+  }
+  //----------------metodo
+  @SubscribeMessage('addMethod')
+  async handleAddMethod(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() methodData: any,
+  ) {
+    const user = client.data.user;
+    if (!user) throw new Error('Usuario no autenticado');
+
+    const roomCode = methodData.roomCode;
+    const classKey = methodData.classKey;
+    const methodName = methodData.methodName;
+    const methodReturnType = methodData.methodReturnType;
+
+    console.log(
+      `Método recibido para la clase con key ${classKey} del usuario ${user.email}.`,
+    );
+
+    // Emitir la adición del método a todos los usuarios conectados en la sala
+    this.server.to(roomCode).emit('methodAdded', {
+      classKey,
+      methodName,
+      methodReturnType,
+      user: user.email, // Incluir el email del usuario que realizó la actualización
+    });
+  }
+  @SubscribeMessage('removeMethod')
+  async handleRemoveMethod(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() methodData: any,
+  ) {
+    const user = client.data.user;
+    if (!user) throw new Error('Usuario no autenticado');
+
+    const roomCode = methodData.roomCode;
+    const classKey = methodData.classKey;
+    const methodName = methodData.methodName;
+
+    console.log(
+      `Método a eliminar de la clase con key ${classKey} recibido del usuario ${user.email}.`,
+    );
+
+    // Emitir la eliminación del método a todos los usuarios conectados en la sala
+    this.server.to(roomCode).emit('methodRemoved', {
+      classKey,
+      methodName,
+      user: user.email, // Incluir el email del usuario que realizó la eliminación
+    });
+  }
+  //nombre de la clase;
+  @SubscribeMessage('updateClassName')
+  async handleUpdateClassName(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() updateData: any,
+  ) {
+    const user = client.data.user;
+    if (!user) throw new Error('Usuario no autenticado');
+
+    const roomCode = updateData.roomCode;
+    const classData = updateData.classData;
+
+    // Emitir el cambio de nombre a todos los usuarios de la sala
+    this.server.to(roomCode).emit('classNameUpdated', classData);
+    console.log(
+      `El usuario ${user.email} actualizó el nombre de la clase con key ${classData.key} a ${classData.name} en la sala ${roomCode}.`,
+    );
+  }
+  //eliminar clase
+  @SubscribeMessage('deleteClass')
+  async handleDeleteClass(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() deleteData: any,
+  ) {
+    const user = client.data.user;
+    if (!user) throw new Error('Usuario no autenticado');
+
+    const roomCode = deleteData.roomCode;
+    const classKey = deleteData.classKey;
+
+    // Emitir el evento de eliminación de clase a todos los usuarios en la sala
+    this.server.to(roomCode).emit('classDeleted', classKey);
+    console.log(
+      `El usuario ${user.email} eliminó la clase con key ${classKey} en la sala ${roomCode}.`,
+    );
+  }
+
+  /* @SubscribeMessage('updateLink')
+  async handleUpdateLink(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() linkData: any,
+  ) {
+    const user = client.data.user;
+    if (!user) throw new Error('Usuario no autenticado');
+
+    const roomCode = linkData.roomCode;
+    const updatedLink = linkData.link;
+
+    this.server.to(roomCode).emit('linkUpdated', updatedLink);
+    console.log(
+      `Usuario ${user.email} actualizó un enlace en la sala: ${roomCode}`,
+    );
+  } */
 }
