@@ -33,6 +33,7 @@ export class Room {
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
+  
   @DeleteDateColumn()
   deletedAt: Date;
 }

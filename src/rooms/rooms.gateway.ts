@@ -92,7 +92,8 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Unirse a la sala en el socket
       client.join(roomCode);
       this.server.to(roomCode).emit('newUserJoined', { email: user.email });
-
+      // Enviar el diagrama almacenado al cliente
+     
       // Obtener la lista de usuarios conectados y emitir a todos
       const usersInRoom =
         await this.getUsersInRoomWithConnectionStatus(roomCode);
@@ -305,6 +306,43 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       `El usuario ${user.email} actualizó el nombre de la clase con key ${classData.key} a ${classData.name} en la sala ${roomCode}.`,
     );
   }
+
+  // Método para manejar la creación de relaciones de asociación
+
+  @SubscribeMessage('createRelationship')
+  handleCreateRelationship(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() relationshipData: any,
+  ) {
+    const roomCode = relationshipData.roomCode;
+    const linkData = relationshipData.linkData;
+
+    // Emitir el evento de creación de relación a todos los usuarios en la sala
+    this.server.to(roomCode).emit('relationshipCreated', linkData);
+
+    console.log(
+      `Relación de tipo ${linkData.relationType} creada en la sala ${roomCode}: ${JSON.stringify(linkData)}`,
+    );
+  }
+  // En el controlador de sockets del backend
+  @SubscribeMessage('createManyToMany')
+  handleCreateManyToMany(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: any,
+  ) {
+    const roomCode = data.roomCode;
+
+    // Emitir el evento de creación de relación a todos los usuarios en la sala
+    this.server.to(roomCode).emit('manyToManyCreated', {
+      intermediateClass: data.intermediateClass,
+      fromIntermediateLinkData: data.fromIntermediateLinkData,
+      toIntermediateLinkData: data.toIntermediateLinkData,
+    });
+
+    console.log(
+      `Relación muchos a muchos creada en la sala ${roomCode}: ${JSON.stringify(data)}`,
+    );
+  }
   //eliminar clase
   @SubscribeMessage('deleteClass')
   async handleDeleteClass(
@@ -323,21 +361,43 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       `El usuario ${user.email} eliminó la clase con key ${classKey} en la sala ${roomCode}.`,
     );
   }
-
-  /* @SubscribeMessage('updateLink')
-  async handleUpdateLink(
+  @SubscribeMessage('deleteRelationship')
+  handleDeleteRelationship(
     @ConnectedSocket() client: Socket,
-    @MessageBody() linkData: any,
+    @MessageBody() relationshipData: any,
   ) {
     const user = client.data.user;
     if (!user) throw new Error('Usuario no autenticado');
+    const roomCode = relationshipData.roomCode;
+    const linkData = relationshipData.linkData;
 
-    const roomCode = linkData.roomCode;
-    const updatedLink = linkData.link;
+    // Emitir el evento de eliminación de enlace a todos los usuarios en la sala
+    this.server.to(roomCode).emit('relationshipDeleted', linkData);
 
-    this.server.to(roomCode).emit('linkUpdated', updatedLink);
     console.log(
-      `Usuario ${user.email} actualizó un enlace en la sala: ${roomCode}`,
+      `Enlace entre ${linkData.from} y ${linkData.to} eliminado en la sala ${roomCode}, por el usuario ${user.email}.`,
     );
-  } */
+  }
+  @SubscribeMessage('updateAttributeText')
+async handleUpdateAttributeText(
+  @ConnectedSocket() client: Socket,
+  @MessageBody() attributeData: any,
+) {
+  const user = client.data.user;
+  if (!user) throw new Error('Usuario no autenticado');
+
+  const roomCode = attributeData.roomCode;
+  const classKey = attributeData.classKey;
+  const updatedAttribute = attributeData.updatedAttribute;
+  const oldAttributeName = attributeData.oldAttributeName;
+
+  // Emite la actualización a todos los usuarios en la sala
+  this.server.to(roomCode).emit('attributeUpdated', {
+    classKey,
+    oldAttributeName,
+    updatedAttribute,
+    user: user.email,  // Para identificar quién hizo la actualización
+  });
+}
+
 }
