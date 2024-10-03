@@ -39,4 +39,5 @@ export class RoomUserController {
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.roomUserService.findOne(id);
   }
+  
 }

@@ -7,8 +7,9 @@ import { User } from 'src/users/entities/user.entity';
 import { Room } from 'src/rooms/entities/room.entity';
 import { AuthModule } from 'src/auth/auth.module'; // Importa el módulo de autenticación
 @Module({
-  imports: [TypeOrmModule.forFeature([RoomUser, User, Room]), AuthModule,],
+  imports: [TypeOrmModule.forFeature([RoomUser, User, Room]), AuthModule,RoomUserModule ],
   controllers: [RoomUserController],
   providers: [RoomUserService],
+  exports: [RoomUserService],
 })
 export class RoomUserModule {}

@@ -123,4 +123,26 @@ export class RoomUserService {
       relations: ['user'],
     });
   }
+   // Método para guardar el diagrama
+   async saveDiagram(roomId: number, userId: number, diagramData: string) {
+    const roomUser = await this.roomUserRepository.findOne({ where: { room: { id: roomId }, user: { id: userId } } });
+
+    if (!roomUser) {
+      throw new Error('No se encontró la relación usuario-sala.');
+    }
+
+    roomUser.diagram_data = diagramData; // Guardar el JSON o XML en este campo
+    return this.roomUserRepository.save(roomUser); // Guardar los cambios en la base de datos
+  }
+
+  // Método para obtener el diagrama
+  async getDiagram(roomId: number, userId: number) {
+    const roomUser = await this.roomUserRepository.findOne({ where: { room: { id: roomId }, user: { id: userId } } });
+
+    if (!roomUser || !roomUser.diagram_data) {
+      throw new Error('No se encontró el diagrama para esta sala.');
+    }
+
+    return roomUser.diagram_data; // Retornar el JSON o XML
+  }
 }

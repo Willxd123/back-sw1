@@ -7,6 +7,7 @@ import { UsersModule } from '../users/users.module';  // Verifica que esta ruta 
 import { AuthModule } from '../auth/auth.module';  // Verifica que esta ruta sea correcta
 import { RoomUser } from 'src/room-user/entities/room-user.entity';
 import { RoomsGateway } from './rooms.gateway';
+import { RoomUserModule } from 'src/room-user/room-user.module';
 
 
 @Module({
@@ -14,7 +15,7 @@ import { RoomsGateway } from './rooms.gateway';
     TypeOrmModule.forFeature([Room, RoomUser]),
     forwardRef(() => UsersModule),  // Si hay una dependencia circular con UsersModule
     forwardRef(() => AuthModule),   // Si hay una dependencia circular con AuthModule
-
+    RoomUserModule, // Importa RoomUserModule
   ],
   providers: [RoomsService, RoomsGateway],
   controllers: [RoomsController],

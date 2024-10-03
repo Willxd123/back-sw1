@@ -30,12 +30,10 @@ export class Room {
   @Column({ default: false })
   isActive: boolean; // Para saber si la sala está activa o finalizada
 
-  @Column({ type: 'text', nullable: true })
-  diagram_data: string; // Aquí almacenamos el XML o JSON del diagrama
-  
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
+  
   @DeleteDateColumn()
   deletedAt: Date;
 }

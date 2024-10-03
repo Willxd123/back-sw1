@@ -93,9 +93,7 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.join(roomCode);
       this.server.to(roomCode).emit('newUserJoined', { email: user.email });
       // Enviar el diagrama almacenado al cliente
-      if (room.diagram_data) {
-        client.emit('loadDiagram', room.diagram_data);
-      }
+     
       // Obtener la lista de usuarios conectados y emitir a todos
       const usersInRoom =
         await this.getUsersInRoomWithConnectionStatus(roomCode);
@@ -380,24 +378,26 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       `Enlace entre ${linkData.from} y ${linkData.to} eliminado en la sala ${roomCode}, por el usuario ${user.email}.`,
     );
   }
+  @SubscribeMessage('updateAttributeText')
+async handleUpdateAttributeText(
+  @ConnectedSocket() client: Socket,
+  @MessageBody() attributeData: any,
+) {
+  const user = client.data.user;
+  if (!user) throw new Error('Usuario no autenticado');
 
-  @SubscribeMessage('saveDiagram')
-  async handleSaveDiagram(
-    @MessageBody() data: { roomCode: string; diagramData: string },
-  ) {
-    try {
-      const room = await this.roomsService.findByCode(data.roomCode);
-      if (!room) {
-        throw new Error('Sala no encontrada');
-      }
+  const roomCode = attributeData.roomCode;
+  const classKey = attributeData.classKey;
+  const updatedAttribute = attributeData.updatedAttribute;
+  const oldAttributeName = attributeData.oldAttributeName;
 
-      // Guardar el XML del diagrama en la base de datos
-      room.diagram_data = data.diagramData;
-      await this.roomsService.update(room.id, room);
+  // Emite la actualización a todos los usuarios en la sala
+  this.server.to(roomCode).emit('attributeUpdated', {
+    classKey,
+    oldAttributeName,
+    updatedAttribute,
+    user: user.email,  // Para identificar quién hizo la actualización
+  });
+}
 
-      console.log(`Diagrama guardado para la sala: ${data.roomCode}`);
-    } catch (error) {
-      console.error('Error al guardar el diagrama:', error.message);
-    }
-  }
 }

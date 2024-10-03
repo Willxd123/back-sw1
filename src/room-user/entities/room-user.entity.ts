@@ -13,5 +13,8 @@ export class RoomUser {
   @ManyToOne(() => Room, room => room.participants)
   room: Room;
   
+  @Column({ type: 'text', nullable: true })
+  diagram_data: string; // Aquí almacenamos el XML o JSON del diagrama
+  
 }
 
